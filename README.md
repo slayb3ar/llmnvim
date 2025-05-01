@@ -98,6 +98,7 @@ return {
 
 ## V1.1
 - [ ] upgraded ask:
+  - [x] scratch
   - [ ] no file, just regular prompt
   - [ ] all files in current directory
   - [ ] all files in root directory

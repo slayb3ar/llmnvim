@@ -257,6 +257,8 @@ local function open_ask_menu()
     "",
     "[1] Current file: " .. (current_file ~= "" and vim.fn.fnamemodify(current_file, ":t") or "[No file]"),
     "[2] All open files: " .. #open_files .. " file(s)",
+    "[3] Scratch buffer content",
+
     "",
     "Select an option or press 'q'/'Esc' to cancel",
   }
@@ -323,6 +325,82 @@ local function open_ask_menu()
     vim.api.nvim_win_close(state.win, true)
     state.win = nil
     state.buf = nil
+  end, { buffer = state.buf })
+
+  -- Add keybinding for option "3" (snacks.nvim scratch buffer)
+  vim.keymap.set("n", "3", function()
+    -- Get list of snacks.nvim scratch buffers
+    local scratch_files = require("snacks").scratch.list()
+    if not scratch_files or #scratch_files == 0 then
+      vim.notify("No snacks.nvim scratch buffers found", vim.log.levels.WARN)
+      return
+    end
+
+    -- Calculate maximum widths for each column (cwd, icon, name, branch)
+    local widths = { 0, 0, 0, 0 } -- [cwd, icon, name, branch]
+    local items = {}
+    for i, scratch in ipairs(scratch_files) do
+      -- Assign or compute icon
+      local icon = scratch.icon or require("snacks").util.icon(scratch.ft, "filetype")
+      -- Format cwd and branch
+      local cwd = scratch.cwd and vim.fn.fnamemodify(scratch.cwd, ":p:~") or ""
+      local branch = scratch.branch and ("branch:%s"):format(scratch.branch) or ""
+      -- Store item for selection
+      items[i] = {
+        scratch = scratch,
+        display = { cwd, icon, scratch.name, branch },
+      }
+      -- Update maximum widths
+      widths[1] = math.max(widths[1], vim.api.nvim_strwidth(cwd))
+      widths[2] = math.max(widths[2], vim.api.nvim_strwidth(icon))
+      widths[3] = math.max(widths[3], vim.api.nvim_strwidth(scratch.name))
+      widths[4] = math.max(widths[4], vim.api.nvim_strwidth(branch))
+    end
+
+    -- Prompt user to select a scratch buffer
+    vim.ui.select(items, {
+      prompt = "Select Scratch Buffer",
+      format_item = function(item)
+        local parts = {}
+        for i, part in ipairs(item.display) do
+          parts[i] = part .. string.rep(" ", widths[i] - vim.api.nvim_strwidth(part))
+        end
+        return table.concat(parts, " ")
+      end,
+    }, function(choice)
+      if not choice then
+        return
+      end
+
+      local selected_scratch = choice.scratch
+      local scratch_file = selected_scratch.file
+
+      -- Verify the scratch file exists and is readable
+      if vim.fn.filereadable(scratch_file) == 0 then
+        vim.notify("Selected scratch buffer file is not readable", vim.log.levels.WARN)
+        return
+      end
+
+      -- Read the content to ensure it's not empty
+      local scratch_content = vim.fn.readfile(scratch_file)
+      if #scratch_content == 0 or (#scratch_content == 1 and scratch_content[1] == "") then
+        vim.notify("Selected scratch buffer is empty", vim.log.levels.WARN)
+        return
+      end
+
+      -- Close the menu
+      vim.api.nvim_win_close(state.win, true)
+      state.win = nil
+      state.buf = nil
+
+      -- Prompt for user input
+      vim.ui.input({ prompt = "Enter your question: " }, function(input)
+        if input and input ~= "" then
+          -- Pass the scratch file directly to execute_prompt
+          execute_prompt({ scratch_file }, input, false)
+        end
+      end)
+    end)
   end, { buffer = state.buf })
 end
 
