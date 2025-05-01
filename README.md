@@ -126,6 +126,12 @@ return {
 - [ ] similar       Return top N similar IDs from a collection using cosine...
 - [ ] templates     Manage stored prompt templates
 
+### LLM Plugins
+- [ ] Embeddings via https://github.com/simonw/llm-embed-jina
+- 
+
 ### Cursor-like Features
 - [ ] Expand ask to entire codebase - use embeddings?
 - [ ] Inline code writing / suggestions
+
+### 
