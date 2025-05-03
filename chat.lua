@@ -45,6 +45,8 @@ local function build_args(cfg)
     vim.list_extend(args, { "--key", cfg.key })
   end
 
+  -- TODO: REMOVE
+  vim.list_extend(args, { "-o", "unlimited", "1" })
   return args
 end
 

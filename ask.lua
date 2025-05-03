@@ -51,6 +51,8 @@ local function build_args(cfg, files, user_prompt, continue)
     table.insert(args, vim.fn.shellescape(user_prompt))
   end
 
+  -- TODO: REMOVE
+  vim.list_extend(args, { "-o", "unlimited", "1" })
   return args
 end
 
