@@ -104,6 +104,7 @@ return {
   - [ ] all files in root directory
   - [ ] search for files using snacks/telescope
   - [ ] selected cursor
+  - [ ] git commit (staged changes, unstaged changes, diff vs master)
 
 - [ ] keybindings / keybindings ui
   - [x] ask keybindings 
