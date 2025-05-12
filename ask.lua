@@ -260,7 +260,9 @@ local function open_ask_menu()
     "[1] Current file: " .. (current_file ~= "" and vim.fn.fnamemodify(current_file, ":t") or "[No file]"),
     "[2] All open files: " .. #open_files .. " file(s)",
     "[3] Scratch buffer content",
-
+    "[4] Current git repository changes (diff)",
+    "[5] Select a git commit (diff)",
+    "[6] Current branch vs master (diff)",
     "",
     "Select an option or press 'q'/'Esc' to cancel",
   }
@@ -402,6 +404,126 @@ local function open_ask_menu()
           execute_prompt({ scratch_file }, input, false)
         end
       end)
+    end)
+  end, { buffer = state.buf })
+
+  -- Option 4: Current git repository changes (diff)
+  vim.keymap.set("n", "4", function()
+    local temp_file = vim.fn.tempname()
+    -- Run separate commands for staged, unstaged, and untracked diffs
+    local commands = {
+      "git diff --cached", -- Staged changes
+      "git diff", -- Unstaged changes
+      "git ls-files --others --exclude-standard | xargs -I {} git diff /dev/null {}", -- Untracked files
+    }
+    local diff_output = {}
+    local success = true
+    for _, cmd in ipairs(commands) do
+      local result = vim.fn.system(cmd)
+      if vim.v.shell_error ~= 0 then
+        success = false
+        vim.notify("Error running '" .. cmd .. "': " .. result, vim.log.levels.ERROR)
+      elseif result and result ~= "" then
+        -- Split result into lines and add to diff_output
+        for line in result:gmatch("[^\r\n]+") do
+          table.insert(diff_output, line)
+        end
+      end
+    end
+    if not success or #diff_output == 0 then
+      vim.notify("No git changes found or error occurred", vim.log.levels.WARN)
+      return
+    end
+    -- Write diff lines to temp file
+    vim.fn.writefile(diff_output, temp_file)
+    vim.api.nvim_win_close(state.win, true)
+    state.win = nil
+    state.buf = nil
+    vim.ui.input({ prompt = "Enter your question: " }, function(input)
+      if input and input ~= "" then
+        execute_prompt({ temp_file }, input, false)
+      else
+        vim.fn.delete(temp_file)
+      end
+    end)
+  end, { buffer = state.buf }) -- Option 5:
+  vim.keymap.set("n", "5", function()
+    -- Use vim.fn.system for simpler git log execution
+    local log_output = vim.fn.system("git log --oneline -n 50")
+    if vim.v.shell_error ~= 0 then
+      vim.notify("Failed to get git log: " .. log_output, vim.log.levels.ERROR)
+      return
+    end
+    local commits = {}
+    for line in log_output:gmatch("[^\r\n]+") do
+      local hash, message = line:match("^(%S+)%s+(.+)$")
+      if hash and message then
+        table.insert(commits, { hash = hash, message = message })
+      end
+    end
+    if #commits == 0 then
+      vim.notify("No commits found", vim.log.levels.WARN)
+      return
+    end
+    vim.ui.select(commits, {
+      prompt = "Select a commit",
+      format_item = function(item)
+        return item.hash .. " " .. item.message
+      end,
+    }, function(choice)
+      if not choice then
+        return
+      end
+      local temp_file = vim.fn.tempname()
+      local diff_result = vim.fn.system("git diff " .. choice.hash .. "^ " .. choice.hash .. " > " .. temp_file)
+      if vim.v.shell_error ~= 0 then
+        vim.notify("Failed to get diff for commit " .. choice.hash .. ": " .. diff_result, vim.log.levels.ERROR)
+        vim.fn.delete(temp_file)
+        return
+      end
+      local diff_content = vim.fn.readfile(temp_file)
+      if #diff_content == 0 then
+        vim.notify("No changes in selected commit", vim.log.levels.WARN)
+        vim.fn.delete(temp_file)
+        return
+      end
+      vim.api.nvim_win_close(state.win, true)
+      state.win = nil
+      state.buf = nil
+      vim.ui.input({ prompt = "Enter your question: " }, function(input)
+        if input and input ~= "" then
+          execute_prompt({ temp_file }, input, false)
+        else
+          vim.fn.delete(temp_file)
+        end
+      end)
+    end)
+  end, { buffer = state.buf })
+
+  -- Option 6: Current branch vs master (diff)
+  vim.keymap.set("n", "6", function()
+    local current_branch = vim.fn.system("git rev-parse --abbrev-ref HEAD"):gsub("\n", "")
+    if current_branch == "" or current_branch == "master" then
+      vim.notify("Not on a valid branch or on master", vim.log.levels.WARN)
+      return
+    end
+    local temp_file = vim.fn.tempname()
+    vim.fn.system("git diff master..." .. current_branch .. " > " .. temp_file)
+    local diff_content = vim.fn.readfile(temp_file)
+    if #diff_content == 0 then
+      vim.notify("No differences found between " .. current_branch .. " and master", vim.log.levels.WARN)
+      vim.fn.delete(temp_file)
+      return
+    end
+    vim.api.nvim_win_close(state.win, true)
+    state.win = nil
+    state.buf = nil
+    vim.ui.input({ prompt = "Enter your question: " }, function(input)
+      if input and input ~= "" then
+        execute_prompt({ temp_file }, input, false)
+      else
+        vim.fn.delete(temp_file)
+      end
     end)
   end, { buffer = state.buf })
 end

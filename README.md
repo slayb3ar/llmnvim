@@ -99,12 +99,14 @@ return {
 ## V1.1
 - [ ] upgraded ask:
   - [x] scratch
+  - [x] git - staged,unstaged,untracked
+  - [x] git - commit
+  - [x] git - branch vs master
+  - [ ] selected cursor
   - [ ] no file, just regular prompt
   - [ ] all files in current directory
   - [ ] all files in root directory
   - [ ] search for files using snacks/telescope
-  - [ ] selected cursor
-  - [ ] git commit (staged changes, unstaged changes, diff vs master)
 
 - [ ] keybindings / keybindings ui
   - [x] ask keybindings 
