@@ -10,14 +10,6 @@ local state = {
   line_buffer = "",
 }
 
-local function get_dimensions()
-  local width = math.max(math.floor(vim.o.columns * 0.8), 80) -- Ensure min 80 cols
-  local height = math.floor(vim.o.lines * 0.7)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
-  return width, height, row, col
-end
-
 local function build_args(cfg)
   local args = { "chat" }
 
@@ -178,21 +170,12 @@ local function fetch_previous_conversation()
 end
 
 local function open_chat_ui()
-  local width, height, row, col = get_dimensions()
   state.chat_buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(state.chat_buf, "bufhidden", "wipe")
-  vim.api.nvim_buf_set_option(state.chat_buf, "filetype", "llm-chat")
   vim.api.nvim_buf_set_option(state.chat_buf, "filetype", "markdown")
-  state.chat_win = vim.api.nvim_open_win(state.chat_buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = "LLM Chat",
-    title_pos = "center",
-  })
+
+  -- Use centralized window creation
+  state.chat_win = require("llmnvim").create_window(state.chat_buf, "LLM Chat")
+
   vim.api.nvim_buf_set_option(state.chat_buf, "wrap", true)
   vim.api.nvim_win_set_option(state.chat_win, "wrap", true)
   vim.api.nvim_win_set_option(state.chat_win, "linebreak", true)
@@ -219,16 +202,7 @@ local function open_chat_ui()
 
   append_chat(initial_lines)
 
-  -- Keybindings
-  vim.keymap.set("n", "<CR>", function()
-    vim.ui.input({ prompt = "You: " }, function(input)
-      if input and input ~= "" then
-        append_chat({ "", "You: " .. input, "" })
-        send_to_llm(input)
-      end
-    end)
-  end, { buffer = state.chat_buf })
-
+  -- Define close_chat function
   local function close_chat()
     if state.handle then
       state.stdin:write("exit\n")
@@ -243,6 +217,16 @@ local function open_chat_ui()
     end
   end
 
+  -- Keybindings
+  vim.keymap.set("n", "<CR>", function()
+    vim.ui.input({ prompt = "You: " }, function(input)
+      if input and input ~= "" then
+        append_chat({ "", "You: " .. input, "" })
+        send_to_llm(input)
+      end
+    end)
+  end, { buffer = state.chat_buf })
+
   vim.keymap.set("n", "<Esc>", close_chat, { buffer = state.chat_buf })
   vim.keymap.set("n", "q", close_chat, { buffer = state.chat_buf })
 
@@ -251,34 +235,30 @@ local function open_chat_ui()
 end
 
 local function open_options_ui(default_config)
+  -- Sanitize system_prompt to avoid newlines
+  local system_prompt_display = (default_config.system_prompt or "[None]"):gsub("\n.*", "...") -- Truncate after first line
   local lines = {
     "LLM Chat Options",
     "────────────────",
     "",
     "[c] Continue last conversation: " .. tostring(default_config.continue_conversation),
-    "[s] System prompt: " .. (default_config.system_prompt or "[None]"),
+    "[s] System prompt: " .. system_prompt_display,
     "[Enter] Start Chat",
     "[q / Esc] Cancel",
   }
 
-  local width, height, row, col = get_dimensions()
   local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(buf, "filetype", "llm-chat-options")
+
+  -- Use centralized window creation
+  local win = require("llmnvim").create_window(buf, "LLM Chat Config")
+
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 
-  local win = vim.api.nvim_open_win(buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = "LLM Chat Config",
-    title_pos = "center",
-  })
-
   local function refresh()
+    system_prompt_display = (default_config.system_prompt or "[None]"):gsub("\n.*", "...")
     lines[4] = "[c] Continue last conversation: " .. tostring(default_config.continue_conversation)
-    lines[5] = "[s] System prompt: " .. (default_config.system_prompt or "[None]")
+    lines[5] = "[s] System prompt: " .. system_prompt_display
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   end
 

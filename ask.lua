@@ -1,4 +1,3 @@
--- ask.lua
 local M = {}
 
 -- State
@@ -9,15 +8,6 @@ local state = {
   last_files = {},
   last_prompt = "",
 }
-
--- Get responsive window dimensions
-local function get_dimensions()
-  local width = math.max(math.floor(vim.o.columns * 0.8), 80)
-  local height = math.floor(vim.o.lines * 0.7)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 3)
-  return width, height, row, col
-end
 
 -- Build llm prompt command arguments
 local function build_args(cfg, files, user_prompt, continue)
@@ -74,20 +64,10 @@ local function execute_prompt(files, user_prompt, continue)
   local args = build_args(state.config, files, user_prompt, continue)
 
   local output_buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(output_buf, "bufhidden", "wipe")
   vim.api.nvim_buf_set_option(output_buf, "filetype", "markdown")
 
-  local width, height, row, col = get_dimensions()
-  local output_win = vim.api.nvim_open_win(output_buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = "LLM Prompt Output",
-    title_pos = "center",
-  })
+  -- Use centralized window creation
+  local output_win = require("llmnvim").create_window(output_buf, "LLM Prompt Output")
 
   vim.api.nvim_buf_set_option(output_buf, "wrap", true)
   vim.api.nvim_win_set_option(output_win, "wrap", true)
@@ -268,25 +248,14 @@ local function open_ask_menu()
   }
 
   -- Create buffer and window
-  local width, height, row, col = get_dimensions()
   state.buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(state.buf, "bufhidden", "wipe")
   vim.api.nvim_buf_set_option(state.buf, "filetype", "llm-ask")
 
-  state.win = vim.api.nvim_open_win(state.buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = "LLM Ask",
-    title_pos = "center",
-  })
+  -- Use centralized window creation
+  state.win = require("llmnvim").create_window(state.buf, "LLM Ask")
 
   vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, content)
   vim.api.nvim_buf_set_option(state.buf, "modifiable", false)
-  vim.api.nvim_win_set_option(state.win, "cursorline", true)
 
   -- Keybindings
   vim.keymap.set("n", "1", function()
@@ -446,7 +415,9 @@ local function open_ask_menu()
         vim.fn.delete(temp_file)
       end
     end)
-  end, { buffer = state.buf }) -- Option 5:
+  end, { buffer = state.buf })
+
+  -- Option 5: Select a git commit (diff)
   vim.keymap.set("n", "5", function()
     -- Use vim.fn.system for simpler git log execution
     local log_output = vim.fn.system("git log --oneline -n 50")

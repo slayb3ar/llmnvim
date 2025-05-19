@@ -7,15 +7,6 @@ local state = {
   config = {},
 }
 
--- Get responsive window dimensions
-local function get_dimensions()
-  local width = math.max(math.floor(vim.o.columns * 0.8), 80)
-  local height = math.floor(vim.o.lines * 0.7)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
-  return width, height, row, col
-end
-
 -- Build llm logs command arguments
 local function build_args(cfg)
   local args = { "logs" }
@@ -25,7 +16,7 @@ local function build_args(cfg)
     vim.list_extend(args, { "-n", tostring(cfg.count) })
   end
 
-  -- Add model filter (-m)
+  -- Add model filter (-n)
   if cfg.model then
     vim.list_extend(args, { "-m", vim.fn.shellescape(cfg.model) })
   end
@@ -64,22 +55,11 @@ local function display_logs()
 
   -- Create buffer for logs
   local output_buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(output_buf, "bufhidden", "wipe")
   vim.api.nvim_buf_set_option(output_buf, "filetype", "markdown")
 
-  -- Set up window dimensions
-  local width, height, row, col = get_dimensions()
+  -- Use centralized window creation
   state.buf = output_buf
-  state.win = vim.api.nvim_open_win(output_buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = "LLM Logs",
-    title_pos = "center",
-  })
+  state.win = require("llmnvim").create_window(output_buf, "LLM Logs")
 
   -- Enable wrapping and scrolling
   vim.api.nvim_buf_set_option(output_buf, "wrap", true)

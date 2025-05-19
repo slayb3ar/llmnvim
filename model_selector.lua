@@ -8,15 +8,6 @@ local state = {
   default_model = nil,
 }
 
--- Get responsive window dimensions
-local function get_dimensions()
-  local width = math.floor(vim.o.columns * 0.8)
-  local height = math.floor(vim.o.lines * 0.7)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
-  return width, height, row, col
-end
-
 -- Parse the output of llm models list
 local function parse_models_output(output)
   local models = {}
@@ -111,22 +102,11 @@ function M.start_model_selector(config)
   table.insert(content, "Press 'q' or <Esc> to close this window")
 
   -- Create buffer and window
-  local width, height, row, col = get_dimensions()
   state.buf = vim.api.nvim_create_buf(false, true)
-
-  vim.api.nvim_buf_set_option(state.buf, "bufhidden", "wipe")
   vim.api.nvim_buf_set_option(state.buf, "filetype", "llm-model-selector")
 
-  state.win = vim.api.nvim_open_win(state.buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    border = "rounded",
-    title = "LLM Model Selector",
-    title_pos = "center",
-  })
+  -- Use centralized window creation
+  state.win = require("llmnvim").create_window(state.buf, "LLM Model Selector")
 
   vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, content)
   vim.api.nvim_buf_set_option(state.buf, "modifiable", false)
@@ -187,7 +167,7 @@ function M.start_model_selector(config)
   -- Add search functionality
   vim.api.nvim_buf_set_keymap(state.buf, "n", "/", "", {
     callback = function()
-      vim.api.nvim_command("set modifiable")
+      vim.api.nvim_buf_set_option(state.buf, "modifiable", true)
       vim.api.nvim_command("/")
     end,
     noremap = true,
