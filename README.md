@@ -1,7 +1,5 @@
 # llmnvim
 
-# Overview
-
 A neovim plugin built on top of [llm](https://llm.datasette.io/en/stable/)
 
 For more on `llm`: https://simonwillison.net/tags/llm/
@@ -14,7 +12,6 @@ For more on `llm`: https://simonwillison.net/tags/llm/
 
 Start a long-running conversation.
 ![Chat Menu](images/chat_menu.png)
-![Chat Window](images/chat_window.png)
 
 ## Ask
 
