@@ -1,11 +1,11 @@
 local M = {}
-
 -- Imports
 local ask = require("llmnvim.ask")
 local chat = require("llmnvim.chat")
 local logs = require("llmnvim.logs")
 local model_selector = require("llmnvim.model_selector")
 local fragments = require("llmnvim.wip_fragments")
+local tabcomplete = require("llmnvim.tabcomplete")
 
 -- Default configuration
 M.config = {
@@ -41,7 +41,6 @@ M.config = {
 function M.create_window(buf, title)
   local cfg = M.config.window
   vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-
   if cfg.type == "sidebar" then
     local width = math.max(math.floor(vim.o.columns * cfg.sidebar.width), cfg.sidebar.min_width)
     local cmd = cfg.sidebar.side == "left" and "topleft vsplit" or "botright vsplit"
@@ -106,18 +105,26 @@ function M.start_logs()
   logs.start_logs(M.config)
 end
 
+function M.toggle_tabcomplete()
+  tabcomplete.toggle(M.config)
+  if not M.config.tabcomplete then
+    M.config.tabcomplete = { enabled = false, debug = true }
+  end
+  M.config.tabcomplete.enabled = tabcomplete.is_enabled()
+end
+
 -- Commands
 vim.api.nvim_create_user_command("LLMAsk", M.start_ask, { desc = "Open LLM ask window" })
 vim.api.nvim_create_user_command("LLMChat", M.start_chat, { desc = "Open LLM chat window" })
 vim.api.nvim_create_user_command("LLMLogs", M.start_logs, { desc = "Open LLM log window" })
 vim.api.nvim_create_user_command("LLMSelectModel", M.start_model_selector, { desc = "Open LLM model selector window" })
--- vim.api.nvim_create_user_command("LLMFragments", M.start_fragments, { desc = "Open LLM fragment window" })
+vim.api.nvim_create_user_command("LLMTabComplete", M.toggle_tabcomplete, { desc = "Toggle LLM tab completion" })
 
 -- Keybindings
 vim.keymap.set("n", "<leader>aa", "<cmd>LLMAsk<cr>", { desc = "Open LLM Ask" })
 vim.keymap.set("n", "<leader>ac", "<cmd>LLMChat<cr>", { desc = "Open LLM Chat" })
 vim.keymap.set("n", "<leader>al", "<cmd>LLMLogs<cr>", { desc = "Open LLM Log" })
 vim.keymap.set("n", "<leader>am", "<cmd>LLMSelectModel<cr>", { desc = "Select LLM Model" })
---vim.keymap.set("n", "<leader>lf", "<cmd>LLMFragments<cr>", { desc = "Open LLM Fragments" })
+vim.keymap.set("n", "<leader>at", "<cmd>LLMTabComplete<cr>", { desc = "Toggle LLM Tab Complete" })
 
 return M
