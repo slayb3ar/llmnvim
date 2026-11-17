@@ -118,7 +118,7 @@ return {
   - [ ] no file, just regular prompt
   - [ ] all files in current directory
   - [ ] all files in root directory
-  - [ ] search for files using snacks/telescope
+  - [ ] search for files using snacks
 
 - [ ] keybindings / keybindings ui
   - [x] ask keybindings
